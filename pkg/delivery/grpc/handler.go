@@ -44,7 +44,7 @@ func (s *server) transformDomainGrpc(domainConf *domain.Conf) *conf_grpc.Conf {
 	grpcButtons := make([]conf_grpc.Button, 0, 25)
 
 	for domainButton := range domainConf.Buttons {
-
+		//hell
 	}
 
 	return grpcConf
