@@ -6,7 +6,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	conf_grpc "m15.io/kappa/pkg/delivery/grpc/conf_grpc"
+	"m15.io/kappa/pkg/delivery/grpc/conf_grpc"
 	"m15.io/kappa/pkg/domain"
 	"m15.io/kappa/pkg/usecases"
 )
@@ -25,14 +25,13 @@ func NewConfServerGrpc(gserver *grpc.Server, confusecase usecases.ConfUsecase) {
 }
 
 func (s *server) GetConf(ctx context.Context, req *conf_grpc.FetchRequest) (*conf_grpc.Conf, error) {
-	grpcConf := new(conf_grpc.Conf)
 
 	domainConf, err := s.usecase.GetConf(req.GetUsername())
 	if err != nil {
-		return grpcConf, err
+		return nil, err
 	}
 
-	grpcConf.Username = domainConf.Username
+	grpcConf := s.transformDomainGrpc(domainConf)
 
 	return grpcConf, nil
 }
@@ -41,11 +40,16 @@ func (s *server) transformDomainGrpc(domainConf *domain.Conf) *conf_grpc.Conf {
 	grpcConf := new(conf_grpc.Conf)
 	grpcConf.Username = domainConf.Username
 
-	grpcButtons := make([]conf_grpc.Button, 0, 25)
+	grpcButtons := make([]*conf_grpc.Button, 0, 25)
 
-	for domainButton := range domainConf.Buttons {
-		//hell
+	for _, domainButton := range domainConf.Buttons {
+		b := &conf_grpc.Button{}
+		b.Text = domainButton.Text
+		b.Value = domainButton.Value
+		grpcButtons = append(grpcButtons, b)
 	}
+
+	grpcConf.Button = grpcButtons
 
 	return grpcConf
 }

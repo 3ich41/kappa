@@ -6,7 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type config struct {
+type Config struct {
 	MqUsername string
 	MqPassword string
 	MqHostname string
@@ -23,17 +23,16 @@ func mustGetEnv(k string) string {
 	return v
 }
 
-// Config keeps an exposed configuration structure
-var Config config
-
 // InitConfig populates config variable and supposed to be called when application started
-func InitConfig() {
+func NewConfig() *Config {
 	m := mustGetEnv
-	Config = config{
+	c := &Config{
 		MqUsername: m("MQ_USERNAME"),
 		MqPassword: m("MQ_PASSWORD"),
 		MqHostname: m("MQ_HOSTNAME"),
 		MqPort:     m("MQ_PORT"),
 		LogLevel:   m("LOGLEVEL"),
 	}
+
+	return c
 }

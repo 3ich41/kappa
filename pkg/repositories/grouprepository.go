@@ -1,20 +1,26 @@
 package repositories
 
 import (
-	"regexp"
-
 	"m15.io/kappa/pkg/domain"
 )
 
 type LDAPClient interface {
 	GetDNsOfUserGroups(username string) ([]string, error)
+	GetGroupByDN(groupDN string) (string, string, error)
 }
 
-type LdapGroupsRepository struct {
+type LdapGroupRepository struct {
 	ldapClient LDAPClient
 }
 
-func (repo *LdapGroupsRepository) GetGroupsOfUser(username string) ([]domain.Group, error) {
+func NewLdapGroupRepository(ldapClient LDAPClient) domain.GroupRepository {
+	r := new(LdapGroupRepository)
+	r.ldapClient = ldapClient
+
+	return r
+}
+
+func (repo *LdapGroupRepository) GetGroupsOfUser(username string) ([]domain.Group, error) {
 	groups := make([]domain.Group, 0, 25)
 
 	groupsDNs, err := repo.ldapClient.GetDNsOfUserGroups(username)
@@ -23,17 +29,15 @@ func (repo *LdapGroupsRepository) GetGroupsOfUser(username string) ([]domain.Gro
 	}
 
 	for _, dn := range groupsDNs {
-		groupname := getGroupCN(dn)
+		groupCN, groupDescr, err := repo.ldapClient.GetGroupByDN(dn)
+		if err != nil {
+			return groups, err
+		}
 		group := domain.Group{
-			Name: groupname,
+			CN:          groupCN,
+			Description: groupDescr,
 		}
 		groups = append(groups, group)
 	}
 	return groups, nil
-}
-
-func getGroupCN(groupdn string) string {
-	re := regexp.MustCompile("CN=([^,]+)")
-	matches := re.FindStringSubmatch(groupdn)
-	return matches[1]
 }

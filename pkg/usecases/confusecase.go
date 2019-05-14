@@ -1,6 +1,8 @@
 package usecases
 
 import (
+	"fmt"
+
 	"m15.io/kappa/pkg/domain"
 )
 
@@ -10,6 +12,13 @@ type ConfUsecase interface {
 
 type confUsecase struct {
 	groupRepo domain.GroupRepository
+}
+
+func NewConfUsecase(groupRepo domain.GroupRepository) ConfUsecase {
+	uc := new(confUsecase)
+	uc.groupRepo = groupRepo
+
+	return uc
 }
 
 func (usecase *confUsecase) GetConf(username string) (*domain.Conf, error) {
@@ -23,6 +32,7 @@ func (usecase *confUsecase) GetConf(username string) (*domain.Conf, error) {
 
 	buttons := groupsToButtons(groups)
 	conf.Buttons = buttons
+	fmt.Println(conf)
 
 	return conf, nil
 }
@@ -30,7 +40,7 @@ func (usecase *confUsecase) GetConf(username string) (*domain.Conf, error) {
 func groupsToButtons(groups []domain.Group) []domain.Button {
 	buttons := make([]domain.Button, 0, 25)
 	for _, group := range groups {
-		b := domain.Button{Text: group.Name, Value: group.Description}
+		b := domain.Button{Text: group.CN, Value: group.Description}
 		buttons = append(buttons, b)
 	}
 	return buttons

@@ -134,8 +134,7 @@ func (lc *LDAPClient) Authenticate(username, password string) (bool, map[string]
 	return true, user, nil
 }
 
-// GetGroupsOfUser returns the group for a user.
-func (lc *LDAPClient) GetGroupsOfUser(username string) ([]string, error) {
+func (lc *LDAPClient) GetDNsOfUserGroups(username string) ([]string, error) {
 	err := lc.Connect()
 	if err != nil {
 		return nil, err
@@ -171,10 +170,42 @@ func (lc *LDAPClient) GetGroupsOfUser(username string) ([]string, error) {
 	//	matches := re.FindStringSubmatch(g)
 	//	groups = append(groups, matches[1])
 	//}
+	lc.Close()
 
 	return groups, nil
 }
 
-func (lc *LDAPClient) GetDNsOfUserGroups(username string) ([]string, error) {
-	return lc.GetGroupsOfUser(username)
+func (lc *LDAPClient) GetGroupByDN(groupDN string) (string, string, error) {
+	err := lc.Connect()
+	if err != nil {
+		return "", "", err
+	}
+
+	// First bind with a read only user
+	if lc.BindDN != "" && lc.BindPassword != "" {
+		err := lc.Conn.Bind(lc.BindDN, lc.BindPassword)
+		if err != nil {
+			return "", "", err
+		}
+	}
+
+	searchRequest := ldap.NewSearchRequest(
+		"dc=resspu,dc=t00,dc=mil,dc=pl", // The base dn to search
+		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+		fmt.Sprintf("(&(objectClass=group)(distinguishedName=%v))", groupDN), // The filter to apply
+		[]string{"dn", "cn", "description"},                                  // A list attributes to retrieve
+		nil,
+	)
+
+	sr, err := lc.Conn.Search(searchRequest)
+	if err != nil {
+		return "", "", err
+	}
+
+	groupCN := sr.Entries[0].GetAttributeValue("cn")
+	groupDescr := sr.Entries[0].GetAttributeValue("description")
+
+	lc.Close()
+
+	return groupCN, groupDescr, nil
 }

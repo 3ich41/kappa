@@ -11,7 +11,7 @@ message FetchRequest {
 
 message Conf {
     string username =1;
-    repeated Button buttons =2;
+    repeated Button button =2;
 }
 
 message Button {
