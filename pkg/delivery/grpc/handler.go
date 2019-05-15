@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
@@ -31,10 +32,25 @@ func (s *server) GetConf(ctx context.Context, req *conf_grpc.FetchRequest) (*con
 
 	domainConf, err := s.interactor.GetConf(req.GetUsername())
 	if err != nil {
+		log.WithFields(log.Fields{
+			"err":       err,
+			"username":  req.GetUsername(),
+			"ipaddr":    req.GetIpaddr(),
+			"mac":       req.GetMac(),
+			"timestamp": req.GetTimestamp(),
+		}).Error("Error getting user conf")
 		return nil, err
 	}
 
 	grpcConf := s.transformDomainGrpc(domainConf)
+
+	log.WithFields(log.Fields{
+		"username":  req.GetUsername(),
+		"ipaddr":    req.GetIpaddr(),
+		"mac":       req.GetMac(),
+		"timestamp": req.GetTimestamp(),
+		"conf":      grpcConf,
+	}).Info("Succesfully created user conf")
 
 	return grpcConf, nil
 }

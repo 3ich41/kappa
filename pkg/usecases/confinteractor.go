@@ -29,7 +29,7 @@ func (interactor *confInteractor) GetConf(username string) (*domain.Conf, error)
 
 	groups, err := interactor.groupRepo.GetGroupsOfUser(username)
 	if err != nil {
-		return conf, err
+		return nil, err
 	}
 
 	buttons := groupsToButtons(groups)

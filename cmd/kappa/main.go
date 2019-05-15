@@ -5,14 +5,13 @@ import (
 	"net"
 	"os"
 
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"m15.io/kappa/pkg/config"
 	confgrpc "m15.io/kappa/pkg/delivery/grpc"
 	"m15.io/kappa/pkg/infrastructure"
 	"m15.io/kappa/pkg/repositories"
 	"m15.io/kappa/pkg/usecases"
-
-	log "github.com/sirupsen/logrus"
 )
 
 func init() {

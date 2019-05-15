@@ -7,6 +7,9 @@ service ConfHandler {
 
 message FetchRequest {
     string username =1;
+    string ipaddr =2;
+    string mac =3;
+    string timestamp =4;
 }
 
 message Conf {
