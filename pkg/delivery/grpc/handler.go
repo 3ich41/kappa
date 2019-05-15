@@ -11,22 +11,25 @@ import (
 	"m15.io/kappa/pkg/usecases"
 )
 
+// server implements grpc service
 type server struct {
-	usecase usecases.ConfUsecase
+	interactor usecases.ConfInteractor
 }
 
-func NewConfServerGrpc(gserver *grpc.Server, confusecase usecases.ConfUsecase) {
+// NewConfServerGrpc creates new server instance and registers it as grpc service
+func NewConfServerGrpc(gserver *grpc.Server, interactor usecases.ConfInteractor) {
 	confServer := &server{
-		usecase: confusecase,
+		interactor: interactor,
 	}
 
 	conf_grpc.RegisterConfHandlerServer(gserver, confServer)
 	reflection.Register(gserver)
 }
 
+// GetConf executes usecase GetConf method to fetch data from LDAP and create client app configuration for given username
 func (s *server) GetConf(ctx context.Context, req *conf_grpc.FetchRequest) (*conf_grpc.Conf, error) {
 
-	domainConf, err := s.usecase.GetConf(req.GetUsername())
+	domainConf, err := s.interactor.GetConf(req.GetUsername())
 	if err != nil {
 		return nil, err
 	}
@@ -36,6 +39,7 @@ func (s *server) GetConf(ctx context.Context, req *conf_grpc.FetchRequest) (*con
 	return grpcConf, nil
 }
 
+// transformDomainGrpc transforms domain.Conf to grpc.Conf
 func (s *server) transformDomainGrpc(domainConf *domain.Conf) *conf_grpc.Conf {
 	grpcConf := new(conf_grpc.Conf)
 	grpcConf.Username = domainConf.Username

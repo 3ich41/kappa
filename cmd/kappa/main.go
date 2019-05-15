@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"google.golang.org/grpc"
+	"m15.io/kappa/pkg/config"
 	confgrpc "m15.io/kappa/pkg/delivery/grpc"
 	"m15.io/kappa/pkg/infrastructure"
 	"m15.io/kappa/pkg/repositories"
@@ -14,10 +15,29 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func main() {
-	//c := config.NewConfig()
+func init() {
+	// Log as JSON instead of the default ASCII formatter.
+	log.SetFormatter(&log.JSONFormatter{})
 
-	//fmt.Println(c)
+	// Output to stdout instead of the default stderr
+	// Can be any io.Writer, see below for File example
+	log.SetOutput(os.Stdout)
+
+	// Only log the warning severity or above.
+	log.SetLevel(log.InfoLevel)
+}
+
+func main() {
+	c := config.NewConfig()
+
+	switch c.LogLevel {
+	case "DEBUG":
+		log.SetLevel(log.DebugLevel)
+	case "TRACE":
+		log.SetLevel(log.TraceLevel)
+	default:
+		log.SetLevel(log.InfoLevel)
+	}
 
 	ldapclient := &infrastructure.LDAPClient{
 		Base:         "dc=resspu,dc=t00,dc=mil,dc=pl",
@@ -34,7 +54,7 @@ func main() {
 
 	ldapGroupRepository := repositories.NewLdapGroupRepository(ldapclient)
 
-	usecase := usecases.NewConfUsecase(ldapGroupRepository)
+	confInteractor := usecases.NewConfInteractor(ldapGroupRepository)
 
 	l, err := net.Listen("tcp", ":50051")
 	if err != nil {
@@ -43,7 +63,7 @@ func main() {
 	}
 
 	server := grpc.NewServer()
-	confgrpc.NewConfServerGrpc(server, usecase)
+	confgrpc.NewConfServerGrpc(server, confInteractor)
 	fmt.Println("Server Run at :50051")
 
 	err = server.Serve(l)

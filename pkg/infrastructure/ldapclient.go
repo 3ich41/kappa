@@ -10,6 +10,7 @@ import (
 	"gopkg.in/ldap.v2"
 )
 
+// dodać pole prefix
 type LDAPClient struct {
 	Attributes         []string
 	Base               string
@@ -73,139 +74,78 @@ func (lc *LDAPClient) Close() {
 	}
 }
 
-// Authenticate authenticates the user against the ldap backend.
-func (lc *LDAPClient) Authenticate(username, password string) (bool, map[string]string, error) {
+// Bind binds to LDAP server using read-only users credentials
+func (lc *LDAPClient) Bind() error {
+	if lc.BindDN != "" && lc.BindPassword != "" {
+		err := lc.Conn.Bind(lc.BindDN, lc.BindPassword)
+		return err
+	}
+
+	return errors.New("BindDN and BindPassword can not be empty")
+}
+
+// GetDNsOfUsersGroups returns list of group DNs that user belongs to
+func (lc *LDAPClient) GetDNsOfUsersGroups(username string) ([]string, error) {
 	err := lc.Connect()
 	if err != nil {
-		return false, nil, err
+		return nil, err
 	}
 
 	// First bind with a read only user
-	if lc.BindDN != "" && lc.BindPassword != "" {
-		err := lc.Conn.Bind(lc.BindDN, lc.BindPassword)
-		if err != nil {
-			return false, nil, err
-		}
+	err = lc.Bind()
+	if err != nil {
+		return nil, err
 	}
 
-	attributes := append(lc.Attributes, "dn")
-	// Search for the given username
 	searchRequest := ldap.NewSearchRequest(
 		lc.Base,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
 		fmt.Sprintf(lc.UserFilter, username),
-		attributes,
+		[]string{"memberOf"},
 		nil,
 	)
-
-	sr, err := lc.Conn.Search(searchRequest)
-	if err != nil {
-		return false, nil, err
-	}
-
-	if len(sr.Entries) < 1 {
-		return false, nil, errors.New("User does not exist")
-	}
-
-	if len(sr.Entries) > 1 {
-		return false, nil, errors.New("Too many entries returned")
-	}
-
-	userDN := sr.Entries[0].DN
-	user := map[string]string{}
-	for _, attr := range lc.Attributes {
-		user[attr] = sr.Entries[0].GetAttributeValue(attr)
-	}
-
-	// Bind as the user to verify their password
-	err = lc.Conn.Bind(userDN, password)
-	if err != nil {
-		return false, user, err
-	}
-
-	// Rebind as the read only user for any further queries
-	if lc.BindDN != "" && lc.BindPassword != "" {
-		err = lc.Conn.Bind(lc.BindDN, lc.BindPassword)
-		if err != nil {
-			return true, user, err
-		}
-	}
-
-	return true, user, nil
-}
-
-func (lc *LDAPClient) GetDNsOfUserGroups(username string) ([]string, error) {
-	err := lc.Connect()
+	searchResult, err := lc.Conn.Search(searchRequest)
 	if err != nil {
 		return nil, err
 	}
-
-	// First bind with a read only user
-	if lc.BindDN != "" && lc.BindPassword != "" {
-		err := lc.Conn.Bind(lc.BindDN, lc.BindPassword)
-		if err != nil {
-			return nil, err
-		}
+	if len(searchResult.Entries) == 0 {
+		return nil, errors.New("Could not find user")
 	}
 
-	searchRequest := ldap.NewSearchRequest(
-		lc.Base,
-		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-		fmt.Sprintf(lc.GroupFilter, username),
-		[]string{"memberOf"}, // can it be something else than "cn"?
-		nil,
-	)
-	sr, err := lc.Conn.Search(searchRequest)
-	if err != nil {
-		return nil, err
-	}
-	if len(sr.Entries) == 0 {
-		return nil, errors.New("No such user")
-	}
-	groups := sr.Entries[0].GetAttributeValues("memberOf")
-
-	//re := regexp.MustCompile("CN=([^,]+)")
-	//groups := []string{}
-	//for _, g := range groupsDN {
-	//	matches := re.FindStringSubmatch(g)
-	//	groups = append(groups, matches[1])
-	//}
+	groups := searchResult.Entries[0].GetAttributeValues("memberOf")
 	lc.Close()
-
 	return groups, nil
 }
 
-func (lc *LDAPClient) GetGroupByDN(groupDN string) (string, string, error) {
+// GetGroupInfoByDN returns CN and Description of a group described by groupDN
+func (lc *LDAPClient) GetGroupInfoByDN(groupDN string) (string, string, error) {
 	err := lc.Connect()
 	if err != nil {
 		return "", "", err
 	}
 
 	// First bind with a read only user
-	if lc.BindDN != "" && lc.BindPassword != "" {
-		err := lc.Conn.Bind(lc.BindDN, lc.BindPassword)
-		if err != nil {
-			return "", "", err
-		}
+	err = lc.Bind()
+	if err != nil {
+		return "", "", err
 	}
 
 	searchRequest := ldap.NewSearchRequest(
-		"dc=resspu,dc=t00,dc=mil,dc=pl", // The base dn to search
+		lc.Base, // The base dn to search
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
 		fmt.Sprintf("(&(objectClass=group)(distinguishedName=%v))", groupDN), // The filter to apply
 		[]string{"dn", "cn", "description"},                                  // A list attributes to retrieve
 		nil,
 	)
 
-	sr, err := lc.Conn.Search(searchRequest)
+	searchResult, err := lc.Conn.Search(searchRequest)
 	if err != nil {
 		return "", "", err
 	}
 
-	groupCN := sr.Entries[0].GetAttributeValue("cn")
-	groupDescr := sr.Entries[0].GetAttributeValue("description")
+	groupCN := searchResult.Entries[0].GetAttributeValue("cn")
+	groupDescr := searchResult.Entries[0].GetAttributeValue("description")
 
 	lc.Close()
-
 	return groupCN, groupDescr, nil
 }
