@@ -12,11 +12,9 @@ import (
 
 // dodać pole prefix
 type LDAPClient struct {
-	Attributes         []string
 	Base               string
 	BindDN             string
 	BindPassword       string
-	GroupFilter        string // e.g. "(memberUid=%s)"
 	Host               string
 	ServerName         string
 	UserFilter         string // e.g. "(uid=%s)"
