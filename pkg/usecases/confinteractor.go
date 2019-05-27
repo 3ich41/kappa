@@ -42,7 +42,7 @@ func (interactor *confInteractor) GetConf(username string) (*domain.Conf, error)
 func groupsToButtons(groups []domain.Group) []domain.Button {
 	buttons := make([]domain.Button, 0, 25)
 	for _, group := range groups {
-		b := domain.Button{Text: group.CN, Value: group.Description}
+		b := domain.Button{Text: group.Description, Value: group.CN}
 		buttons = append(buttons, b)
 	}
 	return buttons
